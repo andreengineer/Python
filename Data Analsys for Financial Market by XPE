@@ -1,0 +1,157 @@
+Desafio 2 IGTI Analista de Dados para Mercado Financeiro
+
+#feito no colab 
+# 1. Criar uma virtualenv e instalar as bibliotecas necessárias.
+!pip install virtualenv
+!virtualenv venv
+!source venv/bin/activate
+!pip install pandas numpy matplotlib seaborn scikit-learn
+
+# 2. Coletar o arquivo na url https://github.com/ProfLeandroLessa/classroom-datasets/blob/master/ANC/BTC%201/Desafio/heart.csv
+import pandas as pd
+
+url = "https://github.com/ProfLeandroLessa/classroom-datasets/blob/master/ANC/BTC%201/Desafio/heart.csv?raw=true"
+df = pd.read_csv(url)
+
+# 3. Analisar os dados coletados.
+print(df.head())
+
+# 4. Avaliar a necessidade de tratamentos de dados ausentes.
+print(df.isnull().sum())
+
+import matplotlib.pyplot as plt
+
+# Criar o gráfico de dispersão
+plt.figure(figsize=(8, 6))
+plt.scatter(df['chol'], df['thalachh'], color='blue', alpha=0.5)
+
+# Adicionar rótulos e título
+plt.title('Gráfico de Dispersão: chol vs thalachh')
+plt.xlabel('chol')
+plt.ylabel('thalachh') 
+# Mostrar o gráfico
+plt.grid(True)
+plt.show() 
+
+# correlação pressão com idade 
+correlation = df['age'].corr(df['trtbps'])
+if correlation > 0:
+    print("A variável 'age' possui correlação positiva em relação à variável 'trtbps'.")
+else:
+    print("A variável 'age' não possui correlação positiva em relação à variável 'trtbps'.")
+#correlação pressão com idade 
+ 
+correlation = df['sex'].corr(df['chol'])
+if correlation > 0:
+    print("A variável 'sex' possui correlação positiva em relação à variável 'chol'.")
+else:
+    print("A variável 'sex' não possui correlação positiva em relação à variável 'chol'.")
+# 6. Realize o balanceamento dos dados.
+# 5. Criação modelo de Random forest Classifier.
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split 
+from imblearn.under_sampling import RandomUnderSampler 
+
+# Definindo X e y
+X = df.drop('caa', axis=1)
+y = df['caa']
+
+# 6. Realize o balanceamento dos dados.
+rus = RandomUnderSampler(random_state=42)
+X_resampled, y_resampled = rus.fit_resample(X, y)
+
+# 7. Separe 80% dos dados para treinar o algoritmo e 20% para testar.
+X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
+
+# 8. Elimine dados duplicados, caso existam.
+df.drop_duplicates(inplace=True) 
+
+quantidade_registros_treinamento = len(X_train)
+
+print("A quantidade de registros selecionados para o treinamento do modelo é:", quantidade_registros_treinamento) 
+# Calcular a média das idades dos pacientes
+media_idades = df['age'].mean()
+
+print("A média das idades dos pacientes é:", media_idades) 
+ 
+ # Criar o classificador Random Forest com os parâmetros especificados
+rf_classifier = RandomForestClassifier(random_state=42, n_estimators=100, max_depth=100)
+
+# Treinar o modelo com os dados de treinamento
+rf_classifier.fit(X_train, y_train)
+
+# Determinar a importância das features
+importances = rf_classifier.feature_importances_
+
+# Criar um DataFrame com as importâncias das features
+feature_importances_df = pd.DataFrame({'Feature': X_train.columns, 'Importance': importances})
+
+# Encontrar a feature de menor importância
+feature_menor_importancia = feature_importances_df.loc[feature_importances_df['Importance'].idxmin()]['Feature']
+
+print("A feature de menor importância é:", feature_menor_importancia) 
+#apesaro do resultado ser sex a menor importancia, utilizei a coluna output para treinar o modelo, que tem valor fixo e fbs foi o resultado neste caso. 
+
+# Calcular a acurácia do modelo com base nos dados de teste
+acuracia_modelo = rf_classifier.score(X_test, y_test)
+
+print("A acurácia do modelo é:", acuracia_modelo) 
+
+from sklearn.metrics import confusion_matrix
+
+# Fazer previsões nos dados de teste
+y_pred = rf_classifier.predict(X_test)
+
+# Calcular a matriz de confusão
+conf_matrix = confusion_matrix(y_test, y_pred)
+
+# Imprimir a matriz de confusão
+print("Matriz de Confusão:")
+print(conf_matrix)
+
+# Determinar a quantidade de registros que o modelo acertou para a classe com menor probabilidade de ocorrer um ataque cardíaco
+registros_acertos = conf_matrix[0][0]
+
+print("A quantidade de registros que o modelo acertou para a classe com menor probabilidade de ocorrer um ataque cardíaco é:", registros_acertos) 
+
+# Determinar o número de falsos negativos (FN), ou seja, o modelo previu que não ocorreria um ataque cardíaco, mas na verdade ocorreu
+falsos_negativos = conf_matrix[1][0]
+
+print("O número de registros em que o modelo cometeu erro ao prever a classe com maior probabilidade de ocorrer um ataque cardíaco é:", falsos_negativos) 
+
+# Determinar o número de verdadeiros positivos (TP)
+verdadeiros_positivos = conf_matrix[1][1]
+
+#13 Calcular a taxa de recall (sensibilidade) para a classe com maior probabilidade de ocorrer um ataque cardíaco
+recall = verdadeiros_positivos / (verdadeiros_positivos + falsos_negativos)
+
+print("A taxa de recall que o modelo alcançou para a classe com maior probabilidade de ocorrer um ataque cardíaco é:", recall) 
+
+# Novo paciente
+novo_paciente = [[33, 1, 3, 50, 233, 1, 0, 150, 0, 2.3, 0, 0, 1]]
+
+# Fazer a previsão para o novo paciente
+previsao = rf_classifier.predict(novo_paciente)
+
+# Interpretar a previsão
+if previsao == 1:
+    print("O modelo classificou o paciente como tendo maior chance de ter um ataque cardíaco.")
+else:
+    print("O modelo classificou o paciente como tendo menor chance de ter um ataque cardíaco.") 
+
+# 12- previsão do grupo de risco - Determinar o número de falsos positivos (FP)
+falsos_positivos = conf_matrix[0][1]
+
+# Calcular a precisão para a classe de maior chance de ataque cardíaco
+precisao = verdadeiros_positivos / (verdadeiros_positivos + falsos_positivos)
+
+print("A precisão que o modelo conseguiu para a classe de maior chance de ataque cardíaco é:", precisao)     
+
+# Gerar a matriz de correlação
+matriz_correlacao = df.corr()
+
+
+# Calcular a correlação da variável output com cp
+correlacao_output_cp = matriz_correlacao.loc['output', 'cp']
+
+print("\nA correlação da variável output com cp é:", correlacao_output_cp)
